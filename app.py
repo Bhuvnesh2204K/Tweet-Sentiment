@@ -4,6 +4,7 @@ import numpy as np
 import re
 import pickle
 import os
+import joblib
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.preprocessing import StandardScaler
 from nltk.corpus import stopwords
@@ -43,41 +44,52 @@ def load_model():
     """Load the trained model and vectorizer"""
     global model, cv, sc
     
-    # Load training data to fit vectorizer
-    train = pd.read_csv('train_tweet.csv')
-    
-    # Preprocess training data
-    train_corpus = []
-    for i in range(len(train)):
-        review = preprocess_text(train['tweet'][i])
-        train_corpus.append(review)
-    
-    # Create and fit CountVectorizer
-    cv = CountVectorizer(max_features=2500)
-    cv.fit_transform(train_corpus)
-    
-    # Create StandardScaler
-    sc = StandardScaler()
-    
-    # Train a simple model (Logistic Regression) for demo
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.model_selection import train_test_split
-    
-    # Prepare features
-    X = cv.transform(train_corpus).toarray()
-    y = train['label']
-    
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
-    
-    # Scale features
-    X_train_scaled = sc.fit_transform(X_train)
-    
-    # Train model
-    model = LogisticRegression(random_state=42)
-    model.fit(X_train_scaled, y_train)
-    
-    print("Model loaded successfully!")
+    try:
+        # Try to load pre-trained model first
+        model = joblib.load('sentiment_model.pkl')
+        cv = joblib.load('vectorizer.pkl')
+        sc = joblib.load('scaler.pkl')
+        print("Pre-trained model loaded successfully!")
+        return True
+    except:
+        print("Pre-trained model not found. Creating new model...")
+        
+        # Load training data to fit vectorizer
+        train = pd.read_csv('train_tweet.csv')
+        
+        # Preprocess training data
+        train_corpus = []
+        for i in range(len(train)):
+            review = preprocess_text(train['tweet'][i])
+            train_corpus.append(review)
+        
+        # Create and fit CountVectorizer
+        cv = CountVectorizer(max_features=2500)
+        cv.fit_transform(train_corpus)
+        
+        # Create StandardScaler
+        sc = StandardScaler()
+        
+        # Train a simple model (Logistic Regression) for demo
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.model_selection import train_test_split
+        
+        # Prepare features
+        X = cv.transform(train_corpus).toarray()
+        y = train['label']
+        
+        # Split data
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+        
+        # Scale features
+        X_train_scaled = sc.fit_transform(X_train)
+        
+        # Train model
+        model = LogisticRegression(random_state=42)
+        model.fit(X_train_scaled, y_train)
+        
+        print("Model created and loaded successfully!")
+        return True
 
 @app.route('/')
 def home():
@@ -150,7 +162,9 @@ def get_stats():
 
 # For local development
 if __name__ == '__main__':
+    import os
     print("Loading model...")
     load_model()
     print("Starting Flask app...")
-    app.run(debug=True, host='0.0.0.0', port=5000) 
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=False, host='0.0.0.0', port=port) 

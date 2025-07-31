@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Sentiment Analysis</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .analysis-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .stats-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .tweet-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s ease;
+        }
+
+        .tweet-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-container {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 12px;
+            display: none;
+        }
+
+        .result-positive {
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            color: white;
+        }
+
+        .result-negative {
+            background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+            color: white;
+        }
+
+        .result-neutral {
+            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+            color: white;
+        }
+
+        .sentiment-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .sentiment-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .confidence-text {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .example-tweets {
+            margin-top: 20px;
+        }
+
+        .example-tweet {
+            background: #f8fafc;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            border-left: 4px solid #667eea;
+        }
+
+        .example-tweet:hover {
+            background: #e2e8f0;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fab fa-twitter"></i> Twitter Sentiment Analysis</h1>
+            <p>Analyze the sentiment of your tweets using AI</p>
+        </div>
+
+        <div class="main-content">
+            <div class="analysis-section">
+                <div class="section-title">
+                    <i class="fas fa-search"></i>
+                    Sentiment Analysis
+                </div>
+                
+                <div class="input-group">
+                    <label for="tweetInput">Enter your tweet:</label>
+                    <textarea 
+                        id="tweetInput" 
+                        class="tweet-input" 
+                        placeholder="Type your tweet here to analyze its sentiment..."
+                        maxlength="280"
+                    ></textarea>
+                </div>
+
+                <button id="analyzeBtn" class="analyze-btn">
+                    <i class="fas fa-magic"></i> Analyze Sentiment
+                </button>
+
+                <div id="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Analyzing sentiment...</p>
+                </div>
+
+                <div id="resultContainer" class="result-container">
+                    <div class="sentiment-icon" id="sentimentIcon"></div>
+                    <div class="sentiment-text" id="sentimentText"></div>
+                    <div class="confidence-text" id="confidenceText"></div>
+                </div>
+
+                <div id="errorMessage" class="error-message"></div>
+
+                <div class="example-tweets">
+                    <h4 style="margin-bottom: 10px; color: #64748b;">Try these examples:</h4>
+                    <div class="example-tweet" onclick="setExampleTweet('I love this new restaurant! The food is amazing and the service is excellent.')">
+                        "I love this new restaurant! The food is amazing and the service is excellent."
+                    </div>
+                    <div class="example-tweet" onclick="setExampleTweet('This is the worst experience I have ever had. Terrible customer service!')">
+                        "This is the worst experience I have ever had. Terrible customer service!"
+                    </div>
+                    <div class="example-tweet" onclick="setExampleTweet('Just finished my morning coffee. Ready for the day ahead!')">
+                        "Just finished my morning coffee. Ready for the day ahead!"
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <div class="section-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Dataset Statistics
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalTweets">-</div>
+                        <div class="stat-label">Total Tweets</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="positiveTweets">-</div>
+                        <div class="stat-label">Positive Tweets</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="negativeTweets">-</div>
+                        <div class="stat-label">Negative Tweets</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="positivePercent">-</div>
+                        <div class="stat-label">Positive %</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load statistics on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+        });
+
+        // Analyze button click handler
+        document.getElementById('analyzeBtn').addEventListener('click', analyzeSentiment);
+
+        // Enter key handler for textarea
+        document.getElementById('tweetInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                analyzeSentiment();
+            }
+        });
+
+        function setExampleTweet(tweet) {
+            document.getElementById('tweetInput').value = tweet;
+        }
+
+        async function analyzeSentiment() {
+            const tweetInput = document.getElementById('tweetInput');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const loading = document.getElementById('loading');
+            const resultContainer = document.getElementById('resultContainer');
+            const errorMessage = document.getElementById('errorMessage');
+
+            const tweet = tweetInput.value.trim();
+            
+            if (!tweet) {
+                showError('Please enter a tweet to analyze');
+                return;
+            }
+
+            // Show loading state
+            analyzeBtn.disabled = true;
+            loading.style.display = 'block';
+            resultContainer.style.display = 'none';
+            errorMessage.style.display = 'none';
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ tweet: tweet })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult(data);
+                } else {
+                    showError(data.error || 'An error occurred during analysis');
+                }
+            } catch (error) {
+                showError('Network error. Please try again.');
+            } finally {
+                analyzeBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+
+        function showResult(data) {
+            const resultContainer = document.getElementById('resultContainer');
+            const sentimentIcon = document.getElementById('sentimentIcon');
+            const sentimentText = document.getElementById('sentimentText');
+            const confidenceText = document.getElementById('confidenceText');
+
+            // Set sentiment icon
+            if (data.sentiment === 'Positive') {
+                sentimentIcon.innerHTML = '<i class="fas fa-smile"></i>';
+                resultContainer.className = 'result-container result-positive';
+            } else {
+                sentimentIcon.innerHTML = '<i class="fas fa-frown"></i>';
+                resultContainer.className = 'result-container result-negative';
+            }
+
+            sentimentText.textContent = data.sentiment;
+            confidenceText.textContent = `Confidence: ${data.confidence}%`;
+
+            resultContainer.style.display = 'block';
+        }
+
+        function showError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/stats');
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('totalTweets').textContent = data.total_tweets.toLocaleString();
+                    document.getElementById('positiveTweets').textContent = data.positive_tweets.toLocaleString();
+                    document.getElementById('negativeTweets').textContent = data.negative_tweets.toLocaleString();
+                    document.getElementById('positivePercent').textContent = data.positive_percent + '%';
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+    </script>
+</body>
+</html> 

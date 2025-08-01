@@ -5,8 +5,7 @@ import re
 import pickle
 import os
 import joblib
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.preprocessing import StandardScaler
+from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 import nltk
@@ -48,11 +47,12 @@ def load_model():
         # Try to load pre-trained model first
         model = joblib.load('sentiment_model.pkl')
         cv = joblib.load('vectorizer.pkl')
-        sc = joblib.load('scaler.pkl')
+        # Note: The original model doesn't use a scaler, so we'll set it to None
+        sc = None
         print("Pre-trained model loaded successfully!")
         return True
-    except:
-        print("Pre-trained model not found. Creating new model...")
+    except Exception as e:
+        print(f"Pre-trained model not found or error loading: {e}. Creating new model...")
         
         # Load training data to fit vectorizer
         train = pd.read_csv('train_tweet.csv')
@@ -63,30 +63,28 @@ def load_model():
             review = preprocess_text(train['tweet'][i])
             train_corpus.append(review)
         
-        # Create and fit CountVectorizer
-        cv = CountVectorizer(max_features=2500)
+        # Create and fit TfidfVectorizer (matching create_model.py)
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        cv = TfidfVectorizer(max_features=1000, stop_words='english')
         cv.fit_transform(train_corpus)
         
-        # Create StandardScaler
-        sc = StandardScaler()
+        # No scaler needed for TfidfVectorizer
+        sc = None
         
         # Train a simple model (Logistic Regression) for demo
         from sklearn.linear_model import LogisticRegression
         from sklearn.model_selection import train_test_split
         
         # Prepare features
-        X = cv.transform(train_corpus).toarray()
+        X = cv.transform(train_corpus)
         y = train['label']
         
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
         
-        # Scale features
-        X_train_scaled = sc.fit_transform(X_train)
-        
-        # Train model
-        model = LogisticRegression(random_state=42)
-        model.fit(X_train_scaled, y_train)
+        # Train model (no scaling needed for TfidfVectorizer)
+        model = LogisticRegression(random_state=42, max_iter=1000)
+        model.fit(X_train, y_train)
         
         print("Model created and loaded successfully!")
         return True
@@ -111,15 +109,12 @@ def analyze_sentiment():
         # Preprocess the tweet
         processed_tweet = preprocess_text(tweet)
         
-        # Transform using CountVectorizer
-        tweet_vector = cv.transform([processed_tweet]).toarray()
+        # Transform using vectorizer
+        tweet_vector = cv.transform([processed_tweet])
         
-        # Scale the features
-        tweet_scaled = sc.transform(tweet_vector)
-        
-        # Predict sentiment
-        prediction = model.predict(tweet_scaled)[0]
-        probability = model.predict_proba(tweet_scaled)[0]
+        # Predict sentiment (no scaling needed for TfidfVectorizer)
+        prediction = model.predict(tweet_vector)[0]
+        probability = model.predict_proba(tweet_vector)[0]
         
         # Get sentiment label and confidence
         sentiment = "Negative" if prediction == 1 else "Positive"

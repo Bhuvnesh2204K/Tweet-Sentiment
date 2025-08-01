@@ -7,18 +7,9 @@ import os
 import joblib
 import warnings
 from sklearn.feature_extraction.text import TfidfVectorizer
-from nltk.corpus import stopwords
-from nltk.stem.porter import PorterStemmer
-import nltk
 
 # Suppress scikit-learn version warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
-
-# Download required NLTK data
-try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords')
 
 app = Flask(__name__)
 
@@ -28,22 +19,11 @@ cv = None
 sc = None
 
 def preprocess_text(text):
-    """Preprocess text for sentiment analysis"""
-    # Remove special characters and digits, but keep important punctuation
-    review = re.sub('[^a-zA-Z\s]', ' ', text)
-    review = review.lower()
-    review = review.split()
-    
-    # Remove stopwords and apply stemming
-    ps = PorterStemmer()
-    stop_words = set(stopwords.words('english'))
-    # Keep important negative words that might be in stopwords
-    important_words = {'not', 'no', 'never', 'none', 'nobody', 'nothing', 'neither', 'nowhere', 'hardly', 'barely', 'scarcely', 'doesnt', 'isnt', 'wasnt', 'shouldnt', 'wouldnt', 'couldnt', 'wont', 'cant', 'dont'}
-    review = [ps.stem(word) for word in review if word not in stop_words or word in important_words]
-    
-    # Join back into string
-    review = ' '.join(review)
-    return review
+    """Preprocess text for sentiment analysis - matching create_model.py"""
+    # Remove special characters and digits (same as create_model.py)
+    text = re.sub('[^a-zA-Z\s]', '', text)
+    text = text.lower().strip()
+    return text
 
 def load_model():
     """Load the trained model and vectorizer"""
@@ -72,11 +52,9 @@ def load_model():
         # Load training data to fit vectorizer
         train = pd.read_csv('train_tweet.csv')
         
-        # Preprocess training data
-        train_corpus = []
-        for i in range(len(train)):
-            review = preprocess_text(train['tweet'][i])
-            train_corpus.append(review)
+        # Preprocess training data (same as create_model.py)
+        train['processed_tweet'] = train['tweet'].apply(preprocess_text)
+        train_corpus = train['processed_tweet'].tolist()
         
         # Create and fit TfidfVectorizer (matching create_model.py)
         from sklearn.feature_extraction.text import TfidfVectorizer

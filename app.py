@@ -29,15 +29,17 @@ sc = None
 
 def preprocess_text(text):
     """Preprocess text for sentiment analysis"""
-    # Remove special characters and digits
-    review = re.sub('[^a-zA-Z]', ' ', text)
+    # Remove special characters and digits, but keep important punctuation
+    review = re.sub('[^a-zA-Z\s]', ' ', text)
     review = review.lower()
     review = review.split()
     
     # Remove stopwords and apply stemming
     ps = PorterStemmer()
     stop_words = set(stopwords.words('english'))
-    review = [ps.stem(word) for word in review if not word in stop_words]
+    # Keep important negative words that might be in stopwords
+    important_words = {'not', 'no', 'never', 'none', 'nobody', 'nothing', 'neither', 'nowhere', 'hardly', 'barely', 'scarcely', 'doesnt', 'isnt', 'wasnt', 'shouldnt', 'wouldnt', 'couldnt', 'wont', 'cant', 'dont'}
+    review = [ps.stem(word) for word in review if word not in stop_words or word in important_words]
     
     # Join back into string
     review = ' '.join(review)
@@ -137,9 +139,17 @@ def analyze_sentiment():
         prediction = model.predict(tweet_vector)[0]
         probability = model.predict_proba(tweet_vector)[0]
         
+        # Debug information
+        print(f"Tweet: {tweet}")
+        print(f"Processed: {processed_tweet}")
+        print(f"Prediction: {prediction} (0=Positive, 1=Negative)")
+        print(f"Probabilities: Positive={probability[0]:.3f}, Negative={probability[1]:.3f}")
+        
         # Get sentiment label and confidence
+        # Label 0 = Positive, Label 1 = Negative
         sentiment = "Negative" if prediction == 1 else "Positive"
-        confidence = probability[1] if prediction == 1 else probability[0]
+        # For confidence: use the probability of the predicted class
+        confidence = probability[prediction]
         
         return jsonify({
             'sentiment': sentiment,

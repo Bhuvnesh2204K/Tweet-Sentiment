@@ -5,10 +5,14 @@ import re
 import pickle
 import os
 import joblib
+import warnings
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 import nltk
+
+# Suppress scikit-learn version warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
 
 # Download required NLTK data
 try:
@@ -43,16 +47,25 @@ def load_model():
     """Load the trained model and vectorizer"""
     global model, cv, sc
     
+    # First try to load the new model (compatible with current scikit-learn version)
     try:
-        # Try to load pre-trained model first
+        model = joblib.load('sentiment_model_new.pkl')
+        cv = joblib.load('vectorizer_new.pkl')
+        sc = None
+        print("New pre-trained model loaded successfully!")
+        return True
+    except:
+        pass
+    
+    # Then try to load the original model
+    try:
         model = joblib.load('sentiment_model.pkl')
         cv = joblib.load('vectorizer.pkl')
-        # Note: The original model doesn't use a scaler, so we'll set it to None
         sc = None
-        print("Pre-trained model loaded successfully!")
+        print("Original pre-trained model loaded successfully!")
         return True
     except Exception as e:
-        print(f"Pre-trained model not found or error loading: {e}. Creating new model...")
+        print(f"Pre-trained models not found or error loading: {e}. Creating new model...")
         
         # Load training data to fit vectorizer
         train = pd.read_csv('train_tweet.csv')
@@ -85,6 +98,14 @@ def load_model():
         # Train model (no scaling needed for TfidfVectorizer)
         model = LogisticRegression(random_state=42, max_iter=1000)
         model.fit(X_train, y_train)
+        
+        # Save the new model for future use
+        try:
+            joblib.dump(model, 'sentiment_model_new.pkl')
+            joblib.dump(cv, 'vectorizer_new.pkl')
+            print("New model saved successfully!")
+        except Exception as save_error:
+            print(f"Could not save new model: {save_error}")
         
         print("Model created and loaded successfully!")
         return True
